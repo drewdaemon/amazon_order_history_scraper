@@ -23,12 +23,11 @@ class amazonScraper:
             'order_id': '/html/body/table/tbody/tr/td/table[1]/tbody/tr[2]/td',
             'title': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/i',
             # condition fetches "Condition: <condition>"
-            'condition': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/span',
+            'seller_condition': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/span',
             # seller fetches "Sold by: <seller>"
-            'seller': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/span/text()[1]',
-            'purchase_price_pu': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[2]/text()',
+            'purchase_price_pu': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[2]',
             # quantity fetches "<quantity> of:"
-            'quantity': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/text()[1]',
+            'quantity': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]',
         }
         self.scraped_data = []
         self.driver = None
@@ -37,12 +36,21 @@ class amazonScraper:
         self.driver.quit()
 
     def scrape_invoice_data(self):
-        order_id = self.driver.find_element_by_xpath(self.invoice_info_paths['order_id']).text
-        order_date = self.driver.find_element_by_xpath(self.invoice_info_paths['order_date']).text
+        order_id = self.driver.find_element_by_xpath(self.invoice_info_paths['order_id']).text[25:] # cutting off "Amazon.com order number: "
+        order_date = self.driver.find_element_by_xpath(self.invoice_info_paths['order_date']).text[14:] # cutting off "Order Placed: "
         title = self.driver.find_element_by_xpath(self.invoice_info_paths['title']).text
-        condition = self.driver.find_element_by_xpath(self.invoice_info_paths['condition']).text
 
-        row = [order_id, order_date, title, condition]
+        seller_condition = self.driver.find_element_by_xpath(self.invoice_info_paths['seller_condition']).text.splitlines()
+        seller = seller_condition[0][9:] # cutting off "Sold by: "
+        if '(seller profile)' in seller:
+            seller.strip()
+            seller = seller[:-17] # cutting off "(seller profile)"
+        condition = seller_condition[2][11:] # cutting off "Condition: "
+
+        quantity = self.driver.find_element_by_xpath(self.invoice_info_paths['quantity']).text[:1]
+        purchase_price_pu = self.driver.find_element_by_xpath(self.invoice_info_paths['purchase_price_pu']).text
+
+        row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu]
         self.scraped_data.append(row)
         print self.scraped_data
 
@@ -114,6 +122,7 @@ class amazonScraper:
     def save_data_to_csv(self, location):
         csv_file = open(location, 'wb')
         writer = csv.writer(csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(['Order ID', 'Date', 'Title', 'Quantity', 'Seller', 'Condition', 'Purchase Price Per Unit'])
         for row in self.scraped_data:
             writer.writerow(row)
 
@@ -135,10 +144,12 @@ email, passwd = scraper.get_credentials()
 scraper.sign_in(email, passwd)
 scraper.go_to_orders()
 scraper.navigate_to_current_year()
+scraper.scrape_invoices()
+
 while scraper.next_page():
     scraper.go_next_page()
     time.sleep(3)
     scraper.scrape_invoices()
-scraper.save_data_to_csv('orders.csv')
+scraper.save_data_to_csv('orders-new.csv')
 
 scraper.close_browser()

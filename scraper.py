@@ -3,11 +3,12 @@ from selenium.common.exceptions import NoSuchElementException
 import time
 import datetime
 import getpass
+import csv
 import os
 
 xpaths = {
     'disabled_next': '//*[@id="ordersContainer"]/div[8]/div/ul/li[@class="a-disabled a-last"]',
-    'next_btn': '//*[@id="ordersContainer"]/div[12]/div/ul/li[12]/a',
+    'next_btns': '//*[@id="ordersContainer"]/div[12]/div/ul//li/a',
     'year_picker': '//*[@id="timePeriodForm"]',
     'year_fields': '//*[@id="a-popover-1"]/div/div/ul//li/a',
     'orders_btn': '//*[@id="your-orders-button-announce"]',
@@ -31,6 +32,9 @@ class amazonScraper:
         }
         self.scraped_data = []
         self.driver = None
+
+    def close_browser(self):
+        self.driver.quit()
 
     def scrape_invoice_data(self):
         order_id = self.driver.find_element_by_xpath(self.invoice_info_paths['order_id']).text
@@ -60,7 +64,24 @@ class amazonScraper:
             invoice_link = self.get_invoice_link(count)
 
         time.sleep(5)
-        self.driver.quit()
+
+    def go_next_page(self):
+        next_btns = self.driver.find_elements_by_xpath(xpaths['next_btns'])
+        last_btn = next_btns[len(next_btns) - 1]
+        last_btn.click()
+
+    def next_page(self):
+        try:
+            next_btns = self.driver.find_elements_by_xpath(xpaths['next_btns'])
+            last_btn = next_btns[len(next_btns) - 1]
+            if last_btn.text[:4] == 'Next':
+                return True
+            else:
+                return False
+        except IndexError:
+            return False
+        except NoSuchElementException:
+            return False
 
     def navigate_to_current_year(self):
         current_year = datetime.datetime.now().year
@@ -68,13 +89,6 @@ class amazonScraper:
         picker.click()
         current_year_field = self.driver.find_element_by_link_text(str(current_year))
         current_year_field.click()
-        # all_options = picker.find_elements_by_tag_name('option')
-        # for option in all_options:
-        #     print(option.get_attribute('value'))
-        #     print(current_year, option.text)
-        #     print(option.text == str(current_year))
-        #     if (option.text == str(current_year)):
-        #         option.click()
 
     def go_to_orders(self):
         account_btn = self.driver.find_element_by_xpath(xpaths['account_btn'])
@@ -83,7 +97,6 @@ class amazonScraper:
         orders_btn = self.driver.find_element_by_xpath(xpaths['orders_btn'])
         orders_btn.click()
         time.sleep(4)
-        self.navigate_to_current_year()
 
     def sign_in(self, email, pass_word):
         self.driver = webdriver.Firefox()
@@ -98,7 +111,11 @@ class amazonScraper:
         passWordField.send_keys(pass_word)
         signInBtn.click()
 
-        self.go_to_orders()
+    def save_data_to_csv(self, location):
+        csv_file = open(location, 'wb')
+        writer = csv.writer(csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        for row in self.scraped_data:
+            writer.writerow(row)
 
     def get_credentials(self):
         try:
@@ -109,11 +126,19 @@ class amazonScraper:
             passwd = os.environ['AMAZON_PASS']
         except KeyError:
             passwd = getpass.getpass('Enter your password: ')
-        
-        self.sign_in(email, passwd)
+
+        return email, passwd
 
 scraper = amazonScraper()
-# try:
-scraper.get_credentials()
-# except:
-#     scraper.get_credentials()
+
+email, passwd = scraper.get_credentials()
+scraper.sign_in(email, passwd)
+scraper.go_to_orders()
+scraper.navigate_to_current_year()
+while scraper.next_page():
+    scraper.go_next_page()
+    time.sleep(3)
+    scraper.scrape_invoices()
+scraper.save_data_to_csv('orders.csv')
+
+scraper.close_browser()

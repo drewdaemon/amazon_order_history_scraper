@@ -1,49 +1,28 @@
 from selenium import webdriver
+from locators import InvoiceLocators as IL, AmazonLocators as AL, SignInLocators as SI
 from selenium.common.exceptions import NoSuchElementException
 import time
-import datetime
 import getpass
 import csv
 import os
 
-xpaths = {
-    'disabled_next': '//*[@id="ordersContainer"]/div[8]/div/ul/li[@class="a-disabled a-last"]',
-    'next_btns': '//*[@id="ordersContainer"]/div[12]/div/ul//li/a',
-    'year_picker': '//*[@id="timePeriodForm"]',
-    'year_fields': '//*[@id="a-popover-1"]/div/div/ul//li/a',
-    'orders_btn': '//*[@id="your-orders-button-announce"]',
-    'account_btn': '//*[@id="nav-link-yourAccount"]',
-}
-
 class amazonScraper:
     def __init__(self):
         self.url = 'https://www.amazon.com'
-        self.invoice_info_paths = {
-            'order_date': '/html/body/table/tbody/tr/td/table[1]/tbody/tr[1]/td',
-            'order_id': '/html/body/table/tbody/tr/td/table[1]/tbody/tr[2]/td',
-            'title': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/i',
-            # fetches condition and seller info
-            'seller_condition': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/span',
-            # quantity fetches "<quantity> of:"
-            'quantity': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]',
-            'purchase_price_pu': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[2]',
-            'subtotal': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[1]/td[2]',
-            'shipping': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[2]/td[2]',
-            'sales_tax': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[5]/td[2]',
-            'total': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[7]/td[2]/b',
-        }
         self.csv_headers = [
-                        'Order ID', 
-                        'Date', 
-                        'Title', 
-                        'Quantity', 
-                        'Seller', 
-                        'Condition', 
-                        'Purchase Price Per Unit', 
-                        'Subtotal', 
-                        'Shipping', 
-                        'Sales Tax', 
-                        'Total'
+                        'Order ID',
+                        'Date',
+                        'Title',
+                        'Quantity',
+                        'Seller',
+                        'Condition',
+                        'Purchase Price Per Unit',
+                        'Subtotal',
+                        'Shipping',
+                        'Sales Tax',
+                        'Total',
+                        'Payment Method',
+                        'Date Shipped'
                         ]
         self.scraped_data = []
         self.driver = None
@@ -52,26 +31,28 @@ class amazonScraper:
         self.driver.quit()
 
     def scrape_invoice_data(self):
-        order_id = self.driver.find_element_by_xpath(self.invoice_info_paths['order_id']).text[25:] # cutting off "Amazon.com order number: "
-        order_date = self.driver.find_element_by_xpath(self.invoice_info_paths['order_date']).text[14:] # cutting off "Order Placed: "
-        title = self.driver.find_element_by_xpath(self.invoice_info_paths['title']).text
+        order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
+        order_date = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+        title = self.driver.find_element(*IL.TITLE).text
 
-        seller_condition = self.driver.find_element_by_xpath(self.invoice_info_paths['seller_condition']).text.splitlines()
+        seller_condition = self.driver.find_element(*IL.SELLER_CONDITION).text.splitlines()
         seller = seller_condition[0][9:] # cutting off "Sold by: "
         if '(seller profile)' in seller:
             seller.strip()
             seller = seller[:-17] # cutting off "(seller profile)"
         condition = seller_condition[2][11:] # cutting off "Condition: "
 
-        quantity = self.driver.find_element_by_xpath(self.invoice_info_paths['quantity']).text[:1]
-        purchase_price_pu = self.driver.find_element_by_xpath(self.invoice_info_paths['purchase_price_pu']).text
-        subtotal = self.driver.find_element_by_xpath(self.invoice_info_paths['subtotal']).text
-        shipping = self.driver.find_element_by_xpath(self.invoice_info_paths['shipping']).text
-        sales_tax = self.driver.find_element_by_xpath(self.invoice_info_paths['sales_tax']).text
-        total = self.driver.find_element_by_xpath(self.invoice_info_paths['total']).text
+        quantity = self.driver.find_element(*IL.QUANTITY).text[:1]
+        purchase_price_pu = self.driver.find_element(*IL.PURCHASE_PRICE_PU).text
+        subtotal = self.driver.find_element(*IL.SUBTOTAL).text
+        shipping = self.driver.find_element(*IL.SHIPPING).text
+        sales_tax = self.driver.find_element(*IL.SALES_TAX).text
+        total = self.driver.find_element(*IL.TOTAL).text
+        method = self.driver.find_element(*IL.PAYMENT_METHOD).text
+        shipped = self.driver.find_element(*IL.DATE_SHIPPED).text[11:] # cutting off "Shipped on: "
 
         # the order of these variables should correspond to self.csv_headers
-        row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total]
+        row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total, method, shipped]
         self.scraped_data.append(row)
         print self.scraped_data
 
@@ -95,13 +76,13 @@ class amazonScraper:
         time.sleep(5)
 
     def go_next_page(self):
-        next_btns = self.driver.find_elements_by_xpath(xpaths['next_btns'])
+        next_btns = self.driver.find_elements_by_xpath(*AL.NAV_BTNS)
         last_btn = next_btns[len(next_btns) - 1]
         last_btn.click()
 
     def next_page(self):
         try:
-            next_btns = self.driver.find_elements_by_xpath(xpaths['next_btns'])
+            next_btns = self.driver.find_elements_by_xpath(*AL.NAV_BTNS)
             last_btn = next_btns[len(next_btns) - 1]
             if last_btn.text[:4] == 'Next':
                 return True
@@ -113,32 +94,32 @@ class amazonScraper:
             return False
 
     def navigate_to_current_year(self):
-        current_year = datetime.datetime.now().year
-        picker = self.driver.find_element_by_xpath(xpaths['year_picker'])
+        picker = self.driver.find_element(*AL.YEAR_PICKER)
         picker.click()
-        current_year_field = self.driver.find_element_by_link_text(str(current_year))
+        current_year_field = self.driver.find_element(*AL.CURRENT_YEAR_LINK)
         current_year_field.click()
 
     def go_to_orders(self):
-        account_btn = self.driver.find_element_by_xpath(xpaths['account_btn'])
+        account_btn = self.driver.find_element(*AL.ACCOUNT_BTN)
         account_btn.click()
         time.sleep(4)
-        orders_btn = self.driver.find_element_by_xpath(xpaths['orders_btn'])
+        orders_btn = self.driver.find_element(*AL.ORDERS_BTN)
         orders_btn.click()
         time.sleep(4)
 
     def sign_in(self, email, pass_word):
         self.driver = webdriver.Firefox()
+        self.driver.maximize_window()
         self.driver.get(self.url)
-        signInBtn = self.driver.find_element_by_xpath('//*[@id="nav-signin-tooltip"]/a')
-        signInBtn.click()
+        sign_in_btn = self.driver.find_element(*AL.SIGN_IN_BTN)
+        sign_in_btn.click()
 
-        emailField = self.driver.find_element_by_xpath('//*[@id="ap_email"]')
-        passWordField = self.driver.find_element_by_xpath('//*[@id="ap_password"]')
-        signInBtn = self.driver.find_element_by_xpath('//*[@id="signInSubmit"]')
-        emailField.send_keys(email)
-        passWordField.send_keys(pass_word)
-        signInBtn.click()
+        email_field = self.driver.find_element(*SI.EMAIL_FIELD)
+        pass_word_field = self.driver.find_element(*SI.PASS_FIELD)
+        submit_btn = self.driver.find_element(*SI.SUBMIT_BTN)
+        email_field.send_keys(email)
+        pass_word_field.send_keys(pass_word)
+        submit_btn.click()
 
     def save_data_to_csv(self, location):
         csv_file = open(location, 'wb')
@@ -152,7 +133,7 @@ class amazonScraper:
             email = os.environ['AMAZON_EMAIL']
         except KeyError:
             email = raw_input('Enter the email address you use to sign into amazon: ')
-        try: 
+        try:
             passwd = os.environ['AMAZON_PASS']
         except KeyError:
             passwd = getpass.getpass('Enter your password: ')

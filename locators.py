@@ -5,12 +5,15 @@ class InvoiceLocators:
     """A container class for locators on the invoice page"""
     ORDER_ID = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[2]/td')
     ORDER_DATE = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[1]/td')
-    TITLE = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/i')
+
+    ITEMS = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody//tr')
+    TITLE = (By.XPATH, 'td[1]/i')
     # quantity fetches "<quantity> of:"
-    QUANTITY = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]')
+    QUANTITY = (By.XPATH, 'td[1]')
     # fetches condition and seller info
-    SELLER_CONDITION = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/span')
-    PURCHASE_PRICE_PU = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[2]')
+    SELLER_CONDITION = (By.XPATH, 'td[1]/span')
+    PURCHASE_PRICE_PU = (By.XPATH, 'td[2]')
+
     SUBTOTAL = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[1]/td[2]')
     SHIPPING = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[2]/td[2]')
     SALES_TAX = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[5]/td[2]')

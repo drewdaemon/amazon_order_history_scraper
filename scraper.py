@@ -43,17 +43,6 @@ class amazonScraper:
     def scrape_invoice_data(self):
         order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
         order_date = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
-        title = self.driver.find_element(*IL.TITLE).text
-
-        seller_condition = self.driver.find_element(*IL.SELLER_CONDITION).text.splitlines()
-        seller = seller_condition[0][9:] # cutting off "Sold by: "
-        if '(seller profile)' in seller:
-            seller.strip()
-            seller = seller[:-17] # cutting off "(seller profile)"
-        condition = seller_condition[2][11:] # cutting off "Condition: "
-
-        quantity = self.driver.find_element(*IL.QUANTITY).text[:1]
-        purchase_price_pu = self.driver.find_element(*IL.PURCHASE_PRICE_PU).text
         subtotal = self.driver.find_element(*IL.SUBTOTAL).text
         shipping = self.driver.find_element(*IL.SHIPPING).text
         sales_tax = self.driver.find_element(*IL.SALES_TAX).text
@@ -61,9 +50,23 @@ class amazonScraper:
         method = self.driver.find_element(*IL.PAYMENT_METHOD).text.splitlines()[8]
         shipped = self.driver.find_element(*IL.DATE_SHIPPED).text[11:] # cutting off "Shipped on: "
 
-        # the order of these variables should correspond to self.csv_headers
-        row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total, method, shipped]
-        self.scraped_data.append(row)
+        items = self.driver.find_elements(*IL.ITEMS)
+        items.pop(0) # the first row only contains "Items Ordered"
+        for item in items:
+            title = item.find_element(*IL.TITLE).text
+            seller_condition = item.find_element(*IL.SELLER_CONDITION).text.splitlines()
+            seller = seller_condition[0][9:] # cutting off "Sold by: "
+            if '(seller profile)' in seller:
+                seller.strip()
+                seller = seller[:-17] # cutting off "(seller profile)"
+            condition = seller_condition[2][11:] # cutting off "Condition: "
+
+            quantity = item.find_element(*IL.QUANTITY).text.split(' ')[0]
+            purchase_price_pu = item.find_element(*IL.PURCHASE_PRICE_PU).text
+
+            # the order of these variables should correspond to self.csv_headers
+            row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total, method, shipped]
+            self.scraped_data.append(row)
         print self.scraped_data
 
     def get_invoice_link(self, which):

@@ -22,13 +22,29 @@ class amazonScraper:
             'order_date': '/html/body/table/tbody/tr/td/table[1]/tbody/tr[1]/td',
             'order_id': '/html/body/table/tbody/tr/td/table[1]/tbody/tr[2]/td',
             'title': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/i',
-            # condition fetches "Condition: <condition>"
+            # fetches condition and seller info
             'seller_condition': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]/span',
-            # seller fetches "Sold by: <seller>"
-            'purchase_price_pu': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[2]',
             # quantity fetches "<quantity> of:"
             'quantity': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[1]',
+            'purchase_price_pu': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr[2]/td[2]',
+            'subtotal': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[1]/td[2]',
+            'shipping': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[2]/td[2]',
+            'sales_tax': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[5]/td[2]',
+            'total': '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[7]/td[2]/b',
         }
+        self.csv_headers = [
+                        'Order ID', 
+                        'Date', 
+                        'Title', 
+                        'Quantity', 
+                        'Seller', 
+                        'Condition', 
+                        'Purchase Price Per Unit', 
+                        'Subtotal', 
+                        'Shipping', 
+                        'Sales Tax', 
+                        'Total'
+                        ]
         self.scraped_data = []
         self.driver = None
 
@@ -49,8 +65,13 @@ class amazonScraper:
 
         quantity = self.driver.find_element_by_xpath(self.invoice_info_paths['quantity']).text[:1]
         purchase_price_pu = self.driver.find_element_by_xpath(self.invoice_info_paths['purchase_price_pu']).text
+        subtotal = self.driver.find_element_by_xpath(self.invoice_info_paths['subtotal']).text
+        shipping = self.driver.find_element_by_xpath(self.invoice_info_paths['shipping']).text
+        sales_tax = self.driver.find_element_by_xpath(self.invoice_info_paths['sales_tax']).text
+        total = self.driver.find_element_by_xpath(self.invoice_info_paths['total']).text
 
-        row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu]
+        # the order of these variables should correspond to self.csv_headers
+        row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total]
         self.scraped_data.append(row)
         print self.scraped_data
 
@@ -122,7 +143,7 @@ class amazonScraper:
     def save_data_to_csv(self, location):
         csv_file = open(location, 'wb')
         writer = csv.writer(csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(['Order ID', 'Date', 'Title', 'Quantity', 'Seller', 'Condition', 'Purchase Price Per Unit'])
+        writer.writerow(self.csv_headers)
         for row in self.scraped_data:
             writer.writerow(row)
 

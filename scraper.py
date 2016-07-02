@@ -1,7 +1,9 @@
 from selenium import webdriver
 from locators import InvoiceLocators as IL, AmazonLocators as AL, SignInLocators as SI
 from selenium.common.exceptions import NoSuchElementException
-import time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 import getpass
 import csv
 import os
@@ -26,6 +28,14 @@ class amazonScraper:
                         ]
         self.scraped_data = []
         self.driver = None
+        self.wait = None
+        self.current_page = 1
+
+    def open_browser(self):
+        self.driver = webdriver.Firefox()
+        self.driver.maximize_window()
+        self.driver.get(self.url)
+        self.wait = WebDriverWait(self.driver, 10)
 
     def close_browser(self):
         self.driver.quit()
@@ -48,7 +58,7 @@ class amazonScraper:
         shipping = self.driver.find_element(*IL.SHIPPING).text
         sales_tax = self.driver.find_element(*IL.SALES_TAX).text
         total = self.driver.find_element(*IL.TOTAL).text
-        method = self.driver.find_element(*IL.PAYMENT_METHOD).text
+        method = self.driver.find_element(*IL.PAYMENT_METHOD).text.splitlines()[8]
         shipped = self.driver.find_element(*IL.DATE_SHIPPED).text[11:] # cutting off "Shipped on: "
 
         # the order of these variables should correspond to self.csv_headers
@@ -58,31 +68,35 @@ class amazonScraper:
 
     def get_invoice_link(self, which):
         try:
-            return self.driver.find_element_by_xpath('//*[@id="ordersContainer"]/div[' + str(which + 1) + ']/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
+            return self.driver.find_element(*AL().get_invoice_link(which))
         except NoSuchElementException:
             return False
 
     def scrape_invoices(self):
+        self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
         count = 1
         invoice_link = self.get_invoice_link(count)
         while (invoice_link):
             invoice_link.click()
-            time.sleep(3)
-            self.scrape_invoice_data()
+            self.wait.until(EC.presence_of_element_located(IL.ORDER_ID))
+            try:
+                self.scrape_invoice_data()
+            except:
+                pass
             self.driver.back()
             count += 1
+            self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
             invoice_link = self.get_invoice_link(count)
 
-        time.sleep(5)
-
     def go_next_page(self):
-        next_btns = self.driver.find_elements_by_xpath(*AL.NAV_BTNS)
-        last_btn = next_btns[len(next_btns) - 1]
-        last_btn.click()
+        next_btns = self.driver.find_elements(*AL.NAV_BTNS)
+        next_btn = next_btns[self.current_page]
+        next_btn.click()
+        self.current_page += 1
 
     def next_page(self):
         try:
-            next_btns = self.driver.find_elements_by_xpath(*AL.NAV_BTNS)
+            next_btns = self.driver.find_elements(*AL.NAV_BTNS)
             last_btn = next_btns[len(next_btns) - 1]
             if last_btn.text[:4] == 'Next':
                 return True
@@ -94,7 +108,7 @@ class amazonScraper:
             return False
 
     def navigate_to_current_year(self):
-        picker = self.driver.find_element(*AL.YEAR_PICKER)
+        picker = self.wait.until(EC.presence_of_element_located(AL.YEAR_PICKER))
         picker.click()
         current_year_field = self.driver.find_element(*AL.CURRENT_YEAR_LINK)
         current_year_field.click()
@@ -102,16 +116,14 @@ class amazonScraper:
     def go_to_orders(self):
         account_btn = self.driver.find_element(*AL.ACCOUNT_BTN)
         account_btn.click()
-        time.sleep(4)
-        orders_btn = self.driver.find_element(*AL.ORDERS_BTN)
+
+        orders_btn = self.wait.until(EC.presence_of_element_located(AL.ORDERS_BTN))
+        ActionChains(self.driver).move_by_offset(-100, 100) # this allows for the menu background to fade before clicking orders btn
+        self.wait.until(EC.element_to_be_clickable(AL.ORDERS_BTN))
         orders_btn.click()
-        time.sleep(4)
 
     def sign_in(self, email, pass_word):
-        self.driver = webdriver.Firefox()
-        self.driver.maximize_window()
-        self.driver.get(self.url)
-        sign_in_btn = self.driver.find_element(*AL.SIGN_IN_BTN)
+        sign_in_btn = self.wait.until(EC.presence_of_element_located(AL.ACCOUNT_BTN))
         sign_in_btn.click()
 
         email_field = self.driver.find_element(*SI.EMAIL_FIELD)
@@ -143,6 +155,7 @@ class amazonScraper:
 scraper = amazonScraper()
 
 email, passwd = scraper.get_credentials()
+scraper.open_browser()
 scraper.sign_in(email, passwd)
 scraper.go_to_orders()
 scraper.navigate_to_current_year()
@@ -150,7 +163,6 @@ scraper.scrape_invoices()
 
 while scraper.next_page():
     scraper.go_next_page()
-    time.sleep(3)
     scraper.scrape_invoices()
 scraper.save_data_to_csv('orders-new.csv')
 

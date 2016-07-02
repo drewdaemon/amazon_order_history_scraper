@@ -27,7 +27,10 @@ class AmazonLocators:
     YEAR_FIELDS = (By.XPATH, '//*[@id="a-popover-1"]/div/div/ul//li/a')
     ORDERS_BTN = (By.XPATH, '//*[@id="your-orders-button-announce"]')
     ACCOUNT_BTN = (By.XPATH, '//*[@id="nav-link-yourAccount"]')
-    SIGN_IN_BTN = (By.XPATH, '//*[@id="nav-signin-tooltip"]/a')
+    FIRST_INVOICE = (By.XPATH, '//*[@id="ordersContainer"]/div[2]/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
+    # SIGN_IN_BTN = (By.XPATH, '//*[@id="nav-signin-tooltip"]/a')
+    def get_invoice_link(self, which):
+        return (By.XPATH, '//*[@id="ordersContainer"]/div[' + str(which + 1) + ']/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
 
 class SignInLocators:
     """A container class for locators on the sign-in page"""

@@ -1,15 +1,16 @@
 from selenium import webdriver
 from locators import InvoiceLocators as IL, AmazonLocators as AL, SignInLocators as SI
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
+import datetime
 import getpass
 import csv
 import os
 
 class amazonScraper:
-    def __init__(self):
+    def __init__(self, csv_name):
         self.url = 'https://www.amazon.com'
         self.csv_headers = [
                         'Order ID',
@@ -26,10 +27,14 @@ class amazonScraper:
                         'Payment Method',
                         'Date Shipped'
                         ]
+        self.csv_file = open(csv_name, 'wb')
+        self.writer = csv.writer(self.csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        self.write_row(self.csv_headers)
         self.scraped_data = []
         self.driver = None
         self.wait = None
         self.current_page = 1
+        self.current_year = None
 
     def open_browser(self):
         self.driver = webdriver.Firefox()
@@ -66,8 +71,8 @@ class amazonScraper:
 
             # the order of these variables should correspond to self.csv_headers
             row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total, method, shipped]
+            self.write_row(row)
             self.scraped_data.append(row)
-        print self.scraped_data
 
     def get_invoice_link(self, which):
         try:
@@ -110,18 +115,36 @@ class amazonScraper:
         except NoSuchElementException:
             return False
 
-    def navigate_to_current_year(self):
+    def year_exists(self, which):
         picker = self.wait.until(EC.presence_of_element_located(AL.YEAR_PICKER))
         picker.click()
-        current_year_field = self.driver.find_element(*AL.CURRENT_YEAR_LINK)
-        current_year_field.click()
+        try:
+            self.wait.until(EC.element_to_be_clickable(AL().get_year_link(which)))
+            return True
+        except TimeoutException:
+            return False
+
+    def go_to_year(self, year):
+        self.current_page = 1
+        self.current_year = year
+        try:
+            year_field = self.driver.find_element(*AL().get_year_link(year))
+            year_field.click()
+        except:
+            picker = self.wait.until(EC.presence_of_element_located(AL.YEAR_PICKER))
+            picker.click()
+            year_field = self.driver.find_element(*AL().get_year_link(year))
+            year_field.click()
 
     def go_to_orders(self):
+        if EC.visibility_of_element_located(AL.NAV_OVERLAY):
+            self.driver.refresh()
+
         account_btn = self.driver.find_element(*AL.ACCOUNT_BTN)
         account_btn.click()
 
         orders_btn = self.wait.until(EC.presence_of_element_located(AL.ORDERS_BTN))
-        ActionChains(self.driver).move_by_offset(-100, 100) # this allows for the menu background to fade before clicking orders btn
+        ActionChains(self.driver).move_by_offset(-500, 100).click() # this allows for the menu background to fade before clicking orders btn
         self.wait.until(EC.element_to_be_clickable(AL.ORDERS_BTN))
         orders_btn.click()
 
@@ -136,12 +159,8 @@ class amazonScraper:
         pass_word_field.send_keys(pass_word)
         submit_btn.click()
 
-    def save_data_to_csv(self, location):
-        csv_file = open(location, 'wb')
-        writer = csv.writer(csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(self.csv_headers)
-        for row in self.scraped_data:
-            writer.writerow(row)
+    def write_row(self, row):
+        self.writer.writerow(row)
 
     def get_credentials(self):
         try:
@@ -155,18 +174,19 @@ class amazonScraper:
 
         return email, passwd
 
-scraper = amazonScraper()
+scraper = amazonScraper('orders-new.csv')
 
 email, passwd = scraper.get_credentials()
 scraper.open_browser()
 scraper.sign_in(email, passwd)
 scraper.go_to_orders()
-scraper.navigate_to_current_year()
-scraper.scrape_invoices()
-
-while scraper.next_page():
-    scraper.go_next_page()
+year = datetime.datetime.now().year
+while scraper.year_exists(year):
+    scraper.go_to_year(year)
     scraper.scrape_invoices()
-scraper.save_data_to_csv('orders-new.csv')
+    while scraper.next_page():
+        scraper.go_next_page()
+        scraper.scrape_invoices()
+    year -= 1
 
 scraper.close_browser()

@@ -1,5 +1,4 @@
 from selenium.webdriver.common.by import By
-import datetime
 
 class InvoiceLocators:
     """A container class for locators on the invoice page"""
@@ -26,14 +25,16 @@ class AmazonLocators:
     DISABLED_NEXT = (By.XPATH, '//*[@id="ordersContainer"]/div[8]/div/ul/li[@class="a-disabled a-last"]')
     NAV_BTNS = (By.XPATH, '//*[@id="ordersContainer"]/div[12]/div/ul//li/a')
     YEAR_PICKER = (By.XPATH, '//*[@id="timePeriodForm"]')
-    CURRENT_YEAR_LINK = (By.LINK_TEXT, str(datetime.datetime.now().year))
     YEAR_FIELDS = (By.XPATH, '//*[@id="a-popover-1"]/div/div/ul//li/a')
     ORDERS_BTN = (By.XPATH, '//*[@id="your-orders-button-announce"]')
     ACCOUNT_BTN = (By.XPATH, '//*[@id="nav-link-yourAccount"]')
     FIRST_INVOICE = (By.XPATH, '//*[@id="ordersContainer"]/div[2]/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
+    NAV_OVERLAY = (By.ID, 'nav-cover')
     # SIGN_IN_BTN = (By.XPATH, '//*[@id="nav-signin-tooltip"]/a')
     def get_invoice_link(self, which):
         return (By.XPATH, '//*[@id="ordersContainer"]/div[' + str(which + 1) + ']/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
+    def get_year_link(self, year):
+        return (By.LINK_TEXT, str(year))
 
 class SignInLocators:
     """A container class for locators on the sign-in page"""

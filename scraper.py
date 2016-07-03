@@ -48,31 +48,38 @@ class amazonScraper:
     def scrape_invoice_data(self):
         order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
         order_date = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
-        subtotal = self.driver.find_element(*IL.SUBTOTAL).text
-        shipping = self.driver.find_element(*IL.SHIPPING).text
-        sales_tax = self.driver.find_element(*IL.SALES_TAX).text
-        total = self.driver.find_element(*IL.TOTAL).text
-        method = self.driver.find_element(*IL.PAYMENT_METHOD).text.splitlines()[8]
-        shipped = self.driver.find_element(*IL.DATE_SHIPPED).text[11:] # cutting off "Shipped on: "
 
-        items = self.driver.find_elements(*IL.ITEMS)
-        items.pop(0) # the first row only contains "Items Ordered"
-        for item in items:
-            title = item.find_element(*IL.TITLE).text
-            seller_condition = item.find_element(*IL.SELLER_CONDITION).text.splitlines()
-            seller = seller_condition[0][9:] # cutting off "Sold by: "
-            if '(seller profile)' in seller:
-                seller.strip()
-                seller = seller[:-17] # cutting off "(seller profile)"
-            condition = seller_condition[2][11:] # cutting off "Condition: "
 
-            quantity = item.find_element(*IL.QUANTITY).text.split(' ')[0]
-            purchase_price_pu = item.find_element(*IL.PURCHASE_PRICE_PU).text
+        item_tables = self.driver.find_elements(*IL.ITEM_TABLES)
+        item_tables.pop(0)
+        payment_table = item_tables.pop() # last table will always be payment info table
+        method = payment_table.find_element(*IL.PAYMENT_METHOD).text.splitlines()[8]
+        print len(item_tables)
+        for table in item_tables:
+            subtotal = table.find_element(*IL.SUBTOTAL).text
+            shipped = table.find_element(*IL.DATE_SHIPPED).text[11:] # cutting off "Shipped on: "
+            shipping = table.find_element(*IL.SHIPPING).text
+            sales_tax = table.find_element(*IL.SALES_TAX).text
+            total = table.find_element(*IL.TOTAL).text
+            items = table.find_elements(*IL.ITEMS)
+            items.pop(0) # the first row only contains "Items Ordered"
+            for item in items:
+                title = item.find_element(*IL.TITLE).text
+                seller_condition = item.find_element(*IL.SELLER_CONDITION).text.splitlines()
+                seller = seller_condition[0][9:] # cutting off "Sold by: "
+                if '(seller profile)' in seller:
+                    seller.strip()
+                    seller = seller[:-17] # cutting off "(seller profile)"
+                condition = seller_condition[2][11:] # cutting off "Condition: "
 
-            # the order of these variables should correspond to self.csv_headers
-            row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total, method, shipped]
-            self.write_row(row)
-            self.scraped_data.append(row)
+                quantity = item.find_element(*IL.QUANTITY).text.split(' ')[0]
+                purchase_price_pu = item.find_element(*IL.PURCHASE_PRICE_PU).text
+
+                # the order of these variables should correspond to self.csv_headers
+                row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total, method, shipped]
+                print row
+                self.write_row(row)
+                self.scraped_data.append(row)
 
     def get_invoice_link(self, which):
         try:
@@ -89,7 +96,7 @@ class amazonScraper:
             self.wait.until(EC.presence_of_element_located(IL.ORDER_ID))
             try:
                 self.scrape_invoice_data()
-            except:
+            except NoSuchElementException:
                 pass
             self.driver.back()
             count += 1
@@ -98,7 +105,7 @@ class amazonScraper:
 
     def go_next_page(self):
         next_btns = self.driver.find_elements(*AL.NAV_BTNS)
-        next_btn = next_btns[self.current_page]
+        next_btn = next_btns[len(next_btns) - 1]
         next_btn.click()
         self.current_page += 1
 
@@ -181,6 +188,7 @@ scraper.open_browser()
 scraper.sign_in(email, passwd)
 scraper.go_to_orders()
 year = datetime.datetime.now().year
+
 while scraper.year_exists(year):
     scraper.go_to_year(year)
     scraper.scrape_invoices()

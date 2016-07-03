@@ -5,7 +5,8 @@ class InvoiceLocators:
     ORDER_ID = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[2]/td')
     ORDER_DATE = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[1]/td')
 
-    ITEMS = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody//tr')
+    ITEM_TABLES = (By.XPATH, '/html/body/table/tbody/tr/td/table')
+    ITEMS = (By.XPATH, 'tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr')
     TITLE = (By.XPATH, 'td[1]/i')
     # quantity fetches "<quantity> of:"
     QUANTITY = (By.XPATH, 'td[1]')
@@ -13,12 +14,13 @@ class InvoiceLocators:
     SELLER_CONDITION = (By.XPATH, 'td[1]/span')
     PURCHASE_PRICE_PU = (By.XPATH, 'td[2]')
 
-    SUBTOTAL = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[1]/td[2]')
-    SHIPPING = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[2]/td[2]')
-    SALES_TAX = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[5]/td[2]')
-    TOTAL = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[7]/td[2]/b')
-    PAYMENT_METHOD = (By.XPATH, '/html/body/table/tbody/tr/td/table[3]/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td')
-    DATE_SHIPPED = (By.XPATH, '/html/body/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[1]/td/table/tbody/tr/td/b/center')
+    SUBTOTAL = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[1]/td[2]')
+    SHIPPING = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[2]/td[2]')
+    SALES_TAX = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[5]/td[2]')
+    TOTAL = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[7]/td[2]/b')
+    DATE_SHIPPED = (By.XPATH, 'tbody/tr/td/table/tbody/tr[1]/td/table/tbody/tr/td/b/center')
+
+    PAYMENT_METHOD = (By.XPATH, 'tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td')
 
 class AmazonLocators:
     """A container class for locators necessary for navigation through amazon's website"""

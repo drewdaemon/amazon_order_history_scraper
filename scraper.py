@@ -227,8 +227,13 @@ class AmazonScraper:
         try:
             self.scrape_all_invoices()
         except TimeoutException: # we probably got signed out
-            self.sign_in()
+            try:
+                self.sign_in()
+            except NoSuchElementException: # we signed back in and are currently on an invoice page
+                self.scrape_invoice_data()
+                self.driver.execute_script('window.history.go(-2)')
             self.try_scrape_all_invoices()
+
 
     def scrape(self):
         while self.year_exists(self.current_year):

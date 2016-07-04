@@ -1,3 +1,5 @@
 selenium*/
 *.csv
 *.pyc
+.DS_STORE
+invoices/

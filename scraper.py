@@ -11,7 +11,7 @@ import csv
 import os
 
 class AmazonScraper:
-    def __init__(self, csv_name, current_year):
+    def __init__(self, csv_name, current_year, invoice_folder):
         self.csv_headers = [
                         'Order ID',
                         'Date',
@@ -40,6 +40,7 @@ class AmazonScraper:
         self.invoice_count = 0
         self.email = ''
         self.pass_word = ''
+        self.invoice_folder = invoice_folder
 
     def open_browser(self):
         self.driver = webdriver.Firefox()
@@ -47,11 +48,15 @@ class AmazonScraper:
         self.driver.get(URLS.AMAZON_HOME)
         self.wait = WebDriverWait(self.driver, 10)
 
-    def close_browser(self):
+    def close(self):
         self.driver.quit()
+        self.csv_file.close()
 
     def asciify(self, row):
-        return [unicodedata.normalize('NFKD', datum).encode('ascii', 'ignore') for datum in row]
+        try:
+            return [unicodedata.normalize('NFKD', datum).encode('ascii', 'ignore') for datum in row]
+        except TypeError:
+            return row
 
     def scrape_invoice_data(self):
         order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
@@ -117,6 +122,11 @@ class AmazonScraper:
         except NoSuchElementException:
             return False
 
+    def save_invoice_as_html(self):
+        self.invoice_count += 1
+        with open(self.invoice_folder + 'invoice-' + str(self.invoice_count) + '.html', 'wb') as file:
+            file.write(self.driver.page_source.encode("UTF-8"))
+
     def scrape_invoices(self):
         self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
         count = 1
@@ -124,6 +134,7 @@ class AmazonScraper:
         while (invoice_link):
             invoice_link.click()
             self.wait.until(EC.presence_of_element_located(IL.ORDER_ID))
+            self.save_invoice_as_html()
             try:
                 self.scrape_invoice_data()
             except NoSuchElementException:
@@ -237,7 +248,7 @@ class AmazonScraper:
             self.current_year -= 1
 
 year = datetime.datetime.now().year
-scraper = AmazonScraper('orders-new3.csv', year)
+scraper = AmazonScraper('orders-new4.csv', year, 'invoices/')
 
 scraper.get_credentials()
 scraper.open_browser()
@@ -246,4 +257,4 @@ scraper.sign_in()
 scraper.go_to_orders()
 scraper.scrape()
 
-scraper.close_browser()
+scraper.close()

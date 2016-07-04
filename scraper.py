@@ -10,7 +10,7 @@ import csv
 import os
 
 class AmazonScraper:
-    def __init__(self, csv_name):
+    def __init__(self, csv_name, current_year):
         self.csv_headers = [
                         'Order ID',
                         'Date',
@@ -35,8 +35,10 @@ class AmazonScraper:
         self.driver = None
         self.wait = None
         self.current_page = 1
-        self.current_year = None
+        self.current_year = current_year
         self.invoice_count = 0
+        self.email = ''
+        self.pass_word = ''
 
     def open_browser(self):
         self.driver = webdriver.Firefox()
@@ -176,12 +178,14 @@ class AmazonScraper:
         sign_in_btn = self.wait.until(EC.presence_of_element_located(AL.ACCOUNT_BTN))
         sign_in_btn.click()
 
-    def sign_in(self, email, pass_word):
+    def sign_in(self):
         email_field = self.driver.find_element(*SI.EMAIL_FIELD)
         pass_word_field = self.driver.find_element(*SI.PASS_FIELD)
         submit_btn = self.driver.find_element(*SI.SUBMIT_BTN)
-        email_field.send_keys(email)
-        pass_word_field.send_keys(pass_word)
+        email_field.clear()
+        email_field.send_keys(self.email)
+        pass_word_field.clear()
+        pass_word_field.send_keys(self.pass_word)
         submit_btn.click()
 
     def write_row(self, row):
@@ -198,23 +202,37 @@ class AmazonScraper:
         except KeyError:
             passwd = getpass.getpass('Enter your password: ')
 
+        self.email = email
+        self.pass_word = passwd
         return email, passwd
 
-scraper = AmazonScraper('orders-new.csv')
+    def scrape_all_invoices(self):
+        self.scrape_invoices()
+        while self.next_page():
+            self.go_next_page()
+            self.scrape_invoices()
 
-email, passwd = scraper.get_credentials()
+    def try_scrape_all_invoices(self):
+        try:
+            self.scrape_all_invoices()
+        except TimeoutException: # we probably got signed out
+            self.sign_in()
+            self.try_scrape_all_invoices()
+
+    def scrape(self):
+        while self.year_exists(self.current_year):
+            self.go_to_year(self.current_year)
+            self.try_scrape_all_invoices()
+            self.current_year -= 1
+
+year = datetime.datetime.now().year
+scraper = AmazonScraper('orders-new3.csv', year)
+
+scraper.get_credentials()
 scraper.open_browser()
 scraper.go_to_sign_in()
-scraper.sign_in(email, passwd)
+scraper.sign_in()
 scraper.go_to_orders()
-year = datetime.datetime.now().year
-
-while scraper.year_exists(year):
-    scraper.go_to_year(year)
-    scraper.scrape_invoices()
-    while scraper.next_page():
-        scraper.go_next_page()
-        scraper.scrape_invoices()
-    year -= 1
+scraper.scrape()
 
 scraper.close_browser()

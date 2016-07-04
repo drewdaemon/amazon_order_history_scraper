@@ -1,17 +1,16 @@
 from selenium import webdriver
 from locators import InvoiceLocators as IL, AmazonLocators as AL, SignInLocators as SI
+from urls import URLS
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
 import datetime
 import getpass
 import csv
 import os
 
-class amazonScraper:
+class AmazonScraper:
     def __init__(self, csv_name):
-        self.url = 'https://www.amazon.com'
         self.csv_headers = [
                         'Order ID',
                         'Date',
@@ -23,7 +22,9 @@ class amazonScraper:
                         'Subtotal',
                         'Shipping',
                         'Sales Tax',
-                        'Total',
+                        'Total for Shipment',
+                        'Total for Order',
+                        'Transaction Date',
                         'Payment Method',
                         'Date Shipped'
                         ]
@@ -35,11 +36,12 @@ class amazonScraper:
         self.wait = None
         self.current_page = 1
         self.current_year = None
+        self.invoice_count = 0
 
     def open_browser(self):
         self.driver = webdriver.Firefox()
         self.driver.maximize_window()
-        self.driver.get(self.url)
+        self.driver.get(URLS.AMAZON_HOME)
         self.wait = WebDriverWait(self.driver, 10)
 
     def close_browser(self):
@@ -49,18 +51,32 @@ class amazonScraper:
         order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
         order_date = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
 
-
         item_tables = self.driver.find_elements(*IL.ITEM_TABLES)
-        item_tables.pop(0)
+        item_tables.pop(0) # first table contains order placed, amazon order num, etc... we don't need it anymore'
         payment_table = item_tables.pop() # last table will always be payment info table
-        method = payment_table.find_element(*IL.PAYMENT_METHOD).text.splitlines()[8]
-        print len(item_tables)
+        method_elements = payment_table.find_elements(*IL.PAYMENT_METHODS)
+        credit_card = True
+        methods = []
+        transaction_dates = []
+        if len(method_elements) > 0:
+            for el in method_elements:
+                info = el.text.split(':')
+                if len(info) >= 2: # sometimes there's a random blank line that needs to be ignored'
+                    methods.append(info[0])
+                    transaction_dates.append(info[1])
+        else:
+            credit_card = False
+            methods.append(payment_table.find_element(*IL.PAYMENT_METHOD).text.splitlines()[8])
+            transaction_dates.append('')
+
+        total_for_order = payment_table.find_element(*IL.TOTAL_FOR_ORDER).text
+        count = 0
         for table in item_tables:
             subtotal = table.find_element(*IL.SUBTOTAL).text
             shipped = table.find_element(*IL.DATE_SHIPPED).text[11:] # cutting off "Shipped on: "
             shipping = table.find_element(*IL.SHIPPING).text
             sales_tax = table.find_element(*IL.SALES_TAX).text
-            total = table.find_element(*IL.TOTAL).text
+            total_for_shipment = table.find_element(*IL.TOTAL_FOR_SHIPMENT).text
             items = table.find_elements(*IL.ITEMS)
             items.pop(0) # the first row only contains "Items Ordered"
             for item in items:
@@ -75,11 +91,17 @@ class amazonScraper:
                 quantity = item.find_element(*IL.QUANTITY).text.split(' ')[0]
                 purchase_price_pu = item.find_element(*IL.PURCHASE_PRICE_PU).text
 
-                # the order of these variables should correspond to self.csv_headers
-                row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax, total, method, shipped]
+                if credit_card:
+                    # the order of these variables should correspond to self.csv_headers
+                    row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax,
+                        total_for_shipment, total_for_order, transaction_dates[count], methods[count], shipped]
+                else:
+                    row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax,
+                        total_for_shipment, total_for_order, transaction_dates[0], methods[0], shipped]
                 print row
                 self.write_row(row)
                 self.scraped_data.append(row)
+            count += 1
 
     def get_invoice_link(self, which):
         try:
@@ -144,21 +166,17 @@ class amazonScraper:
             year_field.click()
 
     def go_to_orders(self):
-        if EC.visibility_of_element_located(AL.NAV_OVERLAY):
-            self.driver.refresh()
-
-        account_btn = self.driver.find_element(*AL.ACCOUNT_BTN)
-        account_btn.click()
+        self.driver.get(URLS.AMAZON_ACCOUNT_PAGE)
+        self.wait.until(EC.element_to_be_clickable(AL.ORDERS_BTN))
 
         orders_btn = self.wait.until(EC.presence_of_element_located(AL.ORDERS_BTN))
-        ActionChains(self.driver).move_by_offset(-500, 100).click() # this allows for the menu background to fade before clicking orders btn
-        self.wait.until(EC.element_to_be_clickable(AL.ORDERS_BTN))
         orders_btn.click()
 
-    def sign_in(self, email, pass_word):
+    def go_to_sign_in(self):
         sign_in_btn = self.wait.until(EC.presence_of_element_located(AL.ACCOUNT_BTN))
         sign_in_btn.click()
 
+    def sign_in(self, email, pass_word):
         email_field = self.driver.find_element(*SI.EMAIL_FIELD)
         pass_word_field = self.driver.find_element(*SI.PASS_FIELD)
         submit_btn = self.driver.find_element(*SI.SUBMIT_BTN)
@@ -168,6 +186,7 @@ class amazonScraper:
 
     def write_row(self, row):
         self.writer.writerow(row)
+        self.csv_file.flush()
 
     def get_credentials(self):
         try:
@@ -181,10 +200,11 @@ class amazonScraper:
 
         return email, passwd
 
-scraper = amazonScraper('orders-new.csv')
+scraper = AmazonScraper('orders-new.csv')
 
 email, passwd = scraper.get_credentials()
 scraper.open_browser()
+scraper.go_to_sign_in()
 scraper.sign_in(email, passwd)
 scraper.go_to_orders()
 year = datetime.datetime.now().year

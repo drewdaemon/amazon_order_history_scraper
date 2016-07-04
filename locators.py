@@ -17,10 +17,13 @@ class InvoiceLocators:
     SUBTOTAL = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[1]/td[2]')
     SHIPPING = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[2]/td[2]')
     SALES_TAX = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[5]/td[2]')
-    TOTAL = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[7]/td[2]/b')
+    TOTAL_FOR_SHIPMENT = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr[7]/td[2]/b')
     DATE_SHIPPED = (By.XPATH, 'tbody/tr/td/table/tbody/tr[1]/td/table/tbody/tr/td/b/center')
 
+    # these xpaths are relative to the last table in the invoice, the payment table
+    PAYMENT_METHODS = (By.XPATH, 'tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr/td[2]/table/tbody/tr')
     PAYMENT_METHOD = (By.XPATH, 'tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td')
+    TOTAL_FOR_ORDER = (By.XPATH, 'tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr[7]/td[2]/b')
 
 class AmazonLocators:
     """A container class for locators necessary for navigation through amazon's website"""

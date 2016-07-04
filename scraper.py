@@ -4,6 +4,7 @@ from urls import URLS
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import unicodedata
 import datetime
 import getpass
 import csv
@@ -48,6 +49,14 @@ class AmazonScraper:
 
     def close_browser(self):
         self.driver.quit()
+
+    def asciify(self, row):
+        for datum in row:
+            try:
+                datum = unicodedata.normalize('NFKD', datum).encode('ascii','ignore')
+            except TypeError:
+                pass
+        return row
 
     def scrape_invoice_data(self):
         order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
@@ -100,9 +109,11 @@ class AmazonScraper:
                 else:
                     row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax,
                         total_for_shipment, total_for_order, transaction_dates[0], methods[0], shipped]
-                print row
-                self.write_row(row)
+
                 self.scraped_data.append(row)
+                print row
+
+                self.write_row(self.asciify(row))
             count += 1
 
     def get_invoice_link(self, which):

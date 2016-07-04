@@ -51,12 +51,7 @@ class AmazonScraper:
         self.driver.quit()
 
     def asciify(self, row):
-        for datum in row:
-            try:
-                datum = unicodedata.normalize('NFKD', datum).encode('ascii','ignore')
-            except TypeError:
-                pass
-        return row
+        return [unicodedata.normalize('NFKD', datum).encode('ascii', 'ignore') for datum in row]
 
     def scrape_invoice_data(self):
         order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
@@ -111,9 +106,9 @@ class AmazonScraper:
                         total_for_shipment, total_for_order, transaction_dates[0], methods[0], shipped]
 
                 self.scraped_data.append(row)
+                row = self.asciify(row)
                 print row
-
-                self.write_row(self.asciify(row))
+                self.write_row(row)
             count += 1
 
     def get_invoice_link(self, which):

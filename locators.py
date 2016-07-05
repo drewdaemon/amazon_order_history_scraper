@@ -35,6 +35,7 @@ class AmazonLocators:
     ACCOUNT_BTN = (By.XPATH, '//*[@id="nav-link-yourAccount"]')
     FIRST_INVOICE = (By.XPATH, '//*[@id="ordersContainer"]/div[2]/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
     NAV_OVERLAY = (By.ID, 'nav-cover')
+    PAGE_DATES = (By.XPATH, '//*[@id="ordersContainer"]/div/div[1]/div/div/div/div[1]/div/div[1]/div[2]/span')
     # SIGN_IN_BTN = (By.XPATH, '//*[@id="nav-signin-tooltip"]/a')
     def get_invoice_link(self, which):
         return (By.XPATH, '//*[@id="ordersContainer"]/div[' + str(which + 1) + ']/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')

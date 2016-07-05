@@ -47,7 +47,7 @@ start_date, end_date = get_dates()
 
 print('Starting browser...')
 
-scraper = AmazonScraper(email, pass_word, start_date, end_date, 'invoices/')
+scraper = AmazonScraper(email, pass_word, start_date, end_date, 'invoices/', 'csvs/')
 
 scraper.open_browser()
 

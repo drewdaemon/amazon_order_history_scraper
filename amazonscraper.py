@@ -5,11 +5,12 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import unicodedata
+import platform
 import datetime
 import csv
 
 class AmazonScraper:
-    def __init__(self, email, pass_word, start_date, end_date, invoice_folder):
+    def __init__(self, email, pass_word, start_date, end_date, invoice_folder, csv_folder):
         self.driver = None
         self.wait = None
         self.current_page = 1
@@ -20,6 +21,7 @@ class AmazonScraper:
         self.email = email
         self.pass_word = pass_word
         self.invoice_folder = invoice_folder
+        self.csv_folder = csv_folder
         self.csv_headers = [
                         'Order ID',
                         'Date',
@@ -37,7 +39,7 @@ class AmazonScraper:
                         'Transaction Date',
                         'Date Shipped'
                         ]
-        self.csv_file = open(self.get_csv_name(), 'wb')
+        self.csv_file = open(self.csv_folder + self.get_csv_name(), 'wb')
         self.writer = csv.writer(self.csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         self.write_row(self.csv_headers)
         self.scrape_started = False
@@ -142,9 +144,7 @@ class AmazonScraper:
         with open(self.invoice_folder + fname, 'wb') as invoice_file:
             invoice_file.write(self.driver.page_source.encode("UTF-8"))
 
-    def is_within_dates(self):
-        order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
-        order_date = datetime.datetime.strptime(order_date_str, '%B %d, %Y')
+    def is_date_within_dates(self, order_date):
         if order_date < self.start_date and (self.end_date == None or order_date > self.end_date):
             self.scrape_started = True
             return True
@@ -152,23 +152,43 @@ class AmazonScraper:
             self.scrape_finished = True
             return False
 
+    def is_page_within_dates(self):
+        within_dates = False
+        page_date_elements = self.driver.find_elements(*AL.PAGE_DATES)
+        page_dates = []
+        for element in page_date_elements:
+            date = datetime.datetime.strptime(element.text, '%B %d, %Y')
+            page_dates.append(date)
+
+        for date in page_dates:
+            if self.is_date_within_dates(date):
+                within_dates = True
+
+        return within_dates
+
+    def is_invoice_within_dates(self):
+        order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+        order_date = datetime.datetime.strptime(order_date_str, '%B %d, %Y')
+        return self.is_date_within_dates(order_date)
+
     def scrape_invoices(self):
         if not self.scrape_finished:
             self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
-            count = 1
-            invoice_link = self.get_invoice_link(count)
-            while (invoice_link):
-                if self.scrape_finished:
-                    break
-                invoice_link.click()
-                self.wait.until(EC.presence_of_element_located(IL.ORDER_ID))
-                if self.is_within_dates():
-                    self.save_invoice_as_html()
-                    self.scrape_invoice_data()
-                self.driver.back()
-                count += 1
-                self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
+            if self.is_page_within_dates():
+                count = 1
                 invoice_link = self.get_invoice_link(count)
+                while (invoice_link):
+                    if self.scrape_finished:
+                        break
+                    invoice_link.click()
+                    self.wait.until(EC.presence_of_element_located(IL.ORDER_ID))
+                    if self.is_invoice_within_dates():
+                        self.save_invoice_as_html()
+                        self.scrape_invoice_data()
+                    self.driver.back()
+                    count += 1
+                    self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
+                    invoice_link = self.get_invoice_link(count)
 
     def go_next_page(self):
         next_btns = self.driver.find_elements(*AL.NAV_BTNS)

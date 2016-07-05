@@ -40,6 +40,8 @@ class AmazonScraper:
         self.csv_file = open(self.get_csv_name(), 'wb')
         self.writer = csv.writer(self.csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         self.write_row(self.csv_headers)
+        self.scrape_started = False
+        self.scrape_finished = False
 
     def get_csv_name(self):
         csv_name = self.email.split('@')[0] + ' - Amazon Scrape - ' + self.start_date.strftime('%Y.%m.%d') + ' thru '
@@ -79,7 +81,7 @@ class AmazonScraper:
             if len(method_elements) > 0:
                 for el in method_elements:
                     info = el.text.split(':')
-                    if len(info) >= 2: # sometimes there's a random blank line that needs to be ignored'
+                    if len(info) >= 2: # sometimes there's a random blank line that needs to be ignored
                         methods.append(info[0])
                         transaction_dates.append(info[1])
             else:
@@ -140,19 +142,33 @@ class AmazonScraper:
         with open(self.invoice_folder + fname, 'wb') as invoice_file:
             invoice_file.write(self.driver.page_source.encode("UTF-8"))
 
+    def is_within_dates(self):
+        order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+        order_date = datetime.datetime.strptime(order_date_str, '%B %d, %Y')
+        if order_date < self.start_date and (self.end_date == None or order_date > self.end_date):
+            self.scrape_started = True
+            return True
+        elif self.end_date != None and order_date < self.end_date:
+            self.scrape_finished = True
+            return False
+
     def scrape_invoices(self):
-        self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
-        count = 1
-        invoice_link = self.get_invoice_link(count)
-        while (invoice_link):
-            invoice_link.click()
-            self.wait.until(EC.presence_of_element_located(IL.ORDER_ID))
-            self.save_invoice_as_html()
-            self.scrape_invoice_data()
-            self.driver.back()
-            count += 1
+        if not self.scrape_finished:
             self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
+            count = 1
             invoice_link = self.get_invoice_link(count)
+            while (invoice_link):
+                if self.scrape_finished:
+                    break
+                invoice_link.click()
+                self.wait.until(EC.presence_of_element_located(IL.ORDER_ID))
+                if self.is_within_dates():
+                    self.save_invoice_as_html()
+                    self.scrape_invoice_data()
+                self.driver.back()
+                count += 1
+                self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
+                invoice_link = self.get_invoice_link(count)
 
     def go_next_page(self):
         next_btns = self.driver.find_elements(*AL.NAV_BTNS)
@@ -227,19 +243,20 @@ class AmazonScraper:
             self.scrape_invoices()
 
     def try_scrape_all_invoices(self):
-        try:
-            self.scrape_all_invoices()
-        except TimeoutException: # we probably got signed out
+        if not self.scrape_finished:
             try:
-                self.sign_in()
-            except NoSuchElementException: # we signed back in and are currently on an invoice page
-                self.scrape_invoice_data()
-                self.driver.execute_script('window.history.go(-2)')
-            self.try_scrape_all_invoices()
+                self.scrape_all_invoices()
+            except TimeoutException: # we probably got signed out
+                try:
+                    self.sign_in()
+                except NoSuchElementException: # we signed back in and are currently on an invoice page
+                    self.scrape_invoice_data()
+                    self.driver.execute_script('window.history.go(-2)')
+                self.try_scrape_all_invoices()
 
 
     def scrape(self):
-        while self.year_exists(self.current_year):
+        while not self.scrape_finished and self.year_exists(self.current_year):
             self.go_to_year(self.current_year)
             self.try_scrape_all_invoices()
             self.current_year -= 1

@@ -9,7 +9,17 @@ import datetime
 import csv
 
 class AmazonScraper:
-    def __init__(self, csv_name, email, pass_word, start_date, end_date, invoice_folder):
+    def __init__(self, email, pass_word, start_date, end_date, invoice_folder):
+        self.driver = None
+        self.wait = None
+        self.current_page = 1
+        self.current_year = start_date.year
+        self.start_date = start_date
+        self.end_date = end_date
+        self.invoice_count = 0
+        self.email = email
+        self.pass_word = pass_word
+        self.invoice_folder = invoice_folder
         self.csv_headers = [
                         'Order ID',
                         'Date',
@@ -27,19 +37,18 @@ class AmazonScraper:
                         'Transaction Date',
                         'Date Shipped'
                         ]
-        self.csv_file = open(csv_name, 'wb')
+        self.csv_file = open(self.get_csv_name(), 'wb')
         self.writer = csv.writer(self.csv_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         self.write_row(self.csv_headers)
-        self.driver = None
-        self.wait = None
-        self.current_page = 1
-        self.current_year = start_date.year
-        self.start_date = start_date
-        self.end_date = end_date
-        self.invoice_count = 0
-        self.email = email
-        self.pass_word = pass_word
-        self.invoice_folder = invoice_folder
+
+    def get_csv_name(self):
+        csv_name = self.email.split('@')[0] + ' - Amazon Scrape - ' + self.start_date.strftime('%Y.%m.%d') + ' thru '
+        if self.end_date != None:
+            csv_name += self.end_date.strftime('%Y.%m.%d')
+        else:
+            csv_name += 'end'
+        csv_name += '.csv'
+        return csv_name
 
     def open_browser(self):
         self.driver = webdriver.Firefox()
@@ -127,8 +136,7 @@ class AmazonScraper:
         order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
         order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
         order_date = datetime.datetime.strptime(order_date_str, '%B %d, %Y')
-        order_date_str = str(order_date.year) + '.' + str(order_date.month) + '.' + str(order_date.day)
-        fname = order_date_str + ' - ' + order_id + ' (' + self.email.split('@')[0] + ').html'
+        fname = order_date.strftime('%Y.%m.%d') + ' - ' + order_id + ' (' + self.email.split('@')[0] + ').html'
         with open(self.invoice_folder + fname, 'wb') as invoice_file:
             invoice_file.write(self.driver.page_source.encode("UTF-8"))
 

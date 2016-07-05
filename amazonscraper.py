@@ -4,13 +4,12 @@ from urls import URLS
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import getpass
-import csv
 import unicodedata
-import os
+import datetime
+import csv
 
 class AmazonScraper:
-    def __init__(self, csv_name, current_year, invoice_folder):
+    def __init__(self, csv_name, email, pass_word, start_date, end_date, invoice_folder):
         self.csv_headers = [
                         'Order ID',
                         'Date',
@@ -24,8 +23,8 @@ class AmazonScraper:
                         'Sales Tax',
                         'Total for Shipment',
                         'Total for Order',
-                        'Transaction Date',
                         'Payment Method',
+                        'Transaction Date',
                         'Date Shipped'
                         ]
         self.csv_file = open(csv_name, 'wb')
@@ -34,10 +33,12 @@ class AmazonScraper:
         self.driver = None
         self.wait = None
         self.current_page = 1
-        self.current_year = current_year
+        self.current_year = start_date.year
+        self.start_date = start_date
+        self.end_date = end_date
         self.invoice_count = 0
-        self.email = ''
-        self.pass_word = ''
+        self.email = email
+        self.pass_word = pass_word
         self.invoice_folder = invoice_folder
 
     def open_browser(self):
@@ -102,17 +103,17 @@ class AmazonScraper:
                     if credit_card:
                         # the order of these variables should correspond to self.csv_headers
                         row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax,
-                            total_for_shipment, total_for_order, transaction_dates[count], methods[count], shipped]
+                            total_for_shipment, total_for_order, methods[count], transaction_dates[count], shipped]
                     else:
                         row = [order_id, order_date, title, quantity, seller, condition, purchase_price_pu, subtotal, shipping, sales_tax,
-                            total_for_shipment, total_for_order, transaction_dates[0], methods[0], shipped]
+                            total_for_shipment, total_for_order, methods[0], transaction_dates[0], shipped]
 
-                    print row
+                    print(row)
                     self.write_row(row)
                 count += 1
-        except NoSuchElementException: #don't recognize invoice
+        except NoSuchElementException: # don't recognize invoice
             row = [order_id]
-            print row
+            print(row)
             self.write_row(row)
 
     def get_invoice_link(self, which):
@@ -123,8 +124,13 @@ class AmazonScraper:
 
     def save_invoice_as_html(self):
         self.invoice_count += 1
-        with open(self.invoice_folder + 'invoice-' + str(self.invoice_count) + '.html', 'wb') as file:
-            file.write(self.driver.page_source.encode("UTF-8"))
+        order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
+        order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+        order_date = datetime.datetime.strptime(order_date_str, '%B %d, %Y')
+        order_date_str = str(order_date.year) + '.' + str(order_date.month) + '.' + str(order_date.day)
+        fname = order_date_str + ' - ' + order_id + ' (' + self.email.split('@')[0] + ').html'
+        with open(self.invoice_folder + fname, 'wb') as invoice_file:
+            invoice_file.write(self.driver.page_source.encode("UTF-8"))
 
     def scrape_invoices(self):
         self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
@@ -205,20 +211,6 @@ class AmazonScraper:
         row = self.asciify(row)
         self.writer.writerow(row)
         self.csv_file.flush()
-
-    def get_credentials(self):
-        try:
-            email = os.environ['AMAZON_EMAIL']
-        except KeyError:
-            email = raw_input('Enter the email address you use to sign into amazon: ')
-        try:
-            passwd = os.environ['AMAZON_PASS']
-        except KeyError:
-            passwd = getpass.getpass('Enter your password: ')
-
-        self.email = email
-        self.pass_word = passwd
-        return email, passwd
 
     def scrape_all_invoices(self):
         self.scrape_invoices()

@@ -14,6 +14,7 @@ class AmazonScraper:
         self.driver = None
         self.wait = None
         self.current_page = 1
+        self.current_invoice = 1
         self.current_year = start_date.year
         self.start_date = start_date
         self.end_date = end_date
@@ -175,9 +176,9 @@ class AmazonScraper:
         if not self.scrape_finished:
             self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
             if self.is_page_within_dates():
-                count = 1
-                invoice_link = self.get_invoice_link(count)
+                invoice_link = self.get_invoice_link(self.current_invoice)
                 while (invoice_link):
+                    self.current_invoice += 1
                     if self.scrape_finished:
                         break
                     invoice_link.click()
@@ -186,9 +187,8 @@ class AmazonScraper:
                         self.save_invoice_as_html()
                         self.scrape_invoice_data()
                     self.driver.back()
-                    count += 1
                     self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
-                    invoice_link = self.get_invoice_link(count)
+                    invoice_link = self.get_invoice_link(self.current_invoice)
 
     def go_next_page(self):
         next_btns = self.driver.find_elements(*AL.NAV_BTNS)
@@ -260,11 +260,14 @@ class AmazonScraper:
         self.scrape_invoices()
         while self.next_page():
             self.go_next_page()
+            self.current_invoice = 1
             self.scrape_invoices()
 
-    def try_scrape_all_invoices(self):
+    def try_scrape_all_invoices(self, redirect):
         if not self.scrape_finished:
             try:
+                if not redirect:
+                    self.current_invoice = 1
                 self.scrape_all_invoices()
             except TimeoutException: # we probably got signed out
                 try:
@@ -272,11 +275,11 @@ class AmazonScraper:
                 except NoSuchElementException: # we signed back in and are currently on an invoice page
                     self.scrape_invoice_data()
                     self.driver.execute_script('window.history.go(-2)')
-                self.try_scrape_all_invoices()
+                self.try_scrape_all_invoices(True)
 
 
     def scrape(self):
         while not self.scrape_finished and self.year_exists(self.current_year):
             self.go_to_year(self.current_year)
-            self.try_scrape_all_invoices()
+            self.try_scrape_all_invoices(False)
             self.current_year -= 1

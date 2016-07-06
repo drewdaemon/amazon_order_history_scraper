@@ -10,7 +10,7 @@ import datetime
 import csv
 
 class AmazonScraper:
-    def __init__(self, email, pass_word, start_date, end_date, invoice_folder, csv_folder):
+    def __init__(self, email, pass_word, business_account, start_date, end_date, csv_folder='csvs/', invoice_folder='invoices/'):
         self.driver = None
         self.wait = None
         self.current_page = 1
@@ -45,6 +45,7 @@ class AmazonScraper:
         self.write_row(self.csv_headers)
         self.scrape_started = False
         self.scrape_finished = False
+        self.business = business_account
 
     def get_csv_name(self):
         csv_name = self.email.split('@')[0] + ' - Amazon Scrape - ' + self.start_date.strftime('%Y.%m.%d') + ' thru '
@@ -71,8 +72,13 @@ class AmazonScraper:
             return row
 
     def scrape_invoice_data(self):
-        order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
-        order_date = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+        if self.business:
+            order_id = self.driver.find_element(*IL.ORDER_ID_BIZ).text[25:] # cutting off "Amazon.com order number: "
+            order_date = self.driver.find_element(*IL.ORDER_DATE_BIZ).text[14:] # cutting off "Order Placed: "
+        else:
+            order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
+            order_date = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+
         try:
             item_tables = self.driver.find_elements(*IL.ITEM_TABLES)
             item_tables.pop(0) # first table contains order placed, amazon order num, etc... we don't need it anymore'
@@ -132,14 +138,22 @@ class AmazonScraper:
 
     def get_invoice_link(self, which):
         try:
-            return self.driver.find_element(*AL().get_invoice_link(which))
+            if self.business:
+                return self.driver.find_element(*AL().get_invoice_link_business(which))
+            else:
+                return self.driver.find_element(*AL().get_invoice_link(which))
         except NoSuchElementException:
+            print('cant find invoice link')
             return False
 
     def save_invoice_as_html(self):
         self.invoice_count += 1
-        order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
-        order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+        if self.business:
+            order_id = self.driver.find_element(*IL.ORDER_ID_BIZ).text[25:] # cutting off "Amazon.com order number: "
+            order_date_str = self.driver.find_element(*IL.ORDER_DATE_BIZ).text[14:] # cutting off "Order Placed: "
+        else:
+            order_id = self.driver.find_element(*IL.ORDER_ID).text[25:] # cutting off "Amazon.com order number: "
+            order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
         order_date = datetime.datetime.strptime(order_date_str, '%B %d, %Y')
         fname = order_date.strftime('%Y.%m.%d') + ' - ' + order_id + ' (' + self.email.split('@')[0] + ').html'
         with open(self.invoice_folder + fname, 'wb') as invoice_file:
@@ -168,13 +182,15 @@ class AmazonScraper:
         return within_dates
 
     def is_invoice_within_dates(self):
-        order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
+        if self.business:
+            order_date_str = self.driver.find_element(*IL.ORDER_DATE_BIZ).text[14:] # cutting off "Order Placed: "
+        else:
+            order_date_str = self.driver.find_element(*IL.ORDER_DATE).text[14:] # cutting off "Order Placed: "
         order_date = datetime.datetime.strptime(order_date_str, '%B %d, %Y')
         return self.is_date_within_dates(order_date)
 
     def scrape_invoices(self):
         if not self.scrape_finished:
-            self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
             if self.is_page_within_dates():
                 invoice_link = self.get_invoice_link(self.current_invoice)
                 while (invoice_link):
@@ -187,7 +203,6 @@ class AmazonScraper:
                         self.save_invoice_as_html()
                         self.scrape_invoice_data()
                     self.driver.back()
-                    self.wait.until(EC.presence_of_element_located(AL.FIRST_INVOICE))
                     invoice_link = self.get_invoice_link(self.current_invoice)
 
     def go_next_page(self):

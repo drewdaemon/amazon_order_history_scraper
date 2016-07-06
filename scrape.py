@@ -44,10 +44,14 @@ def get_dates():
 
 email, pass_word = get_credentials()
 start_date, end_date = get_dates()
+business = raw_input('And is this an amazon business account? (y/n) ')
 
 print('Starting browser...')
 
-scraper = AmazonScraper(email, pass_word, start_date, end_date, 'invoices/', 'csvs/')
+if business == 'y':
+    scraper = AmazonScraper(email, pass_word, True, start_date, end_date)
+else:
+    scraper = AmazonScraper(email, pass_word, False, start_date, end_date)
 
 scraper.open_browser()
 

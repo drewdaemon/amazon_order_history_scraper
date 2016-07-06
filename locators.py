@@ -5,6 +5,9 @@ class InvoiceLocators:
     ORDER_ID = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[2]/td')
     ORDER_DATE = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[1]/td')
 
+    ORDER_ID_BIZ = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[4]/td')
+    ORDER_DATE_BIZ = (By.XPATH, '/html/body/table/tbody/tr/td/table[1]/tbody/tr[3]/td')
+
     ITEM_TABLES = (By.XPATH, '/html/body/table/tbody/tr/td/table')
     ITEMS = (By.XPATH, 'tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody/tr')
     TITLE = (By.XPATH, 'td[1]/i')
@@ -33,12 +36,12 @@ class AmazonLocators:
     YEAR_FIELDS = (By.XPATH, '//*[@id="a-popover-1"]/div/div/ul//li/a')
     ORDERS_BTN = (By.XPATH, '//*[@id="your-orders-button-announce"]')
     ACCOUNT_BTN = (By.XPATH, '//*[@id="nav-link-yourAccount"]')
-    FIRST_INVOICE = (By.XPATH, '//*[@id="ordersContainer"]/div[2]/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
     NAV_OVERLAY = (By.ID, 'nav-cover')
     PAGE_DATES = (By.XPATH, '//*[@id="ordersContainer"]/div/div[1]/div/div/div/div[1]/div/div[1]/div[2]/span')
-    # SIGN_IN_BTN = (By.XPATH, '//*[@id="nav-signin-tooltip"]/a')
     def get_invoice_link(self, which):
         return (By.XPATH, '//*[@id="ordersContainer"]/div[' + str(which + 1) + ']/div[1]/div/div/div/div[2]/div[2]/ul/a[2]')
+    def get_invoice_link_business(self, which):
+        return (By.XPATH, '//*[@id="ordersContainer"]/div[' + str(which + 1) + ']/div[1]/div/div/div/div[2]/div[2]/ul/span[1]/a')
     def get_year_link(self, year):
         return (By.LINK_TEXT, str(year))
 

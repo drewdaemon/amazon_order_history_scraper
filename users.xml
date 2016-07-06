@@ -1,0 +1,12 @@
+<!--
+Example user entry (keep in mind that the tags *must* appear in this order for each user).
+<business> refers to whether it's a business or personal type account.
+<users>
+    <user>
+        <username>emailaddress@gmail.com</username>
+        <password>*********</password>
+        <business>false</business>
+    </user>
+    ...
+</users>
+-->

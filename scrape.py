@@ -1,6 +1,8 @@
 import datetime
 import getpass
 import os
+
+from xml.etree import ElementTree
 from amazonscraper import AmazonScraper
 
 def get_credentials():
@@ -42,17 +44,42 @@ def get_dates():
 
     return start_date, end_date
 
-email, pass_word = get_credentials()
-start_date, end_date = get_dates()
-business = raw_input('And is this an amazon business account? (y/n) ')
+try:
+    tree = ElementTree.parse('users.xml')
+    nodes = tree.getroot()
+    users = []
+    for node in nodes:
+        users.append(
+            {
+                'username': node[0].text,
+                'password': node[1].text,
+                'business': True if node[2].text == 'true' else False
+            }
+        )
+
+    if len(users) >= 1:
+        print('Here are the available usernames: ')
+        for i in range(len(users)):
+            print(str(i + 1) + ' - ' + users[i]['username'])
+        while(1):
+            which = input('Which one should I scrape? ')
+            if which > 0 and which <= len(users):
+                start_date, end_date = get_dates()
+                scraper = AmazonScraper(users[which - 1]['username'], users[which - 1]['password'], users[which - 1]['business'], start_date, end_date)
+                break
+            else:
+                print('Invalid input!')
+
+except:
+    email, pass_word = get_credentials()
+    business = raw_input('And is this an amazon business account? (y/n) ')
+
+    if business == 'y':
+        scraper = AmazonScraper(email, pass_word, True, start_date, end_date)
+    else:
+        scraper = AmazonScraper(email, pass_word, False, start_date, end_date)
 
 print('Starting browser...')
-
-if business == 'y':
-    scraper = AmazonScraper(email, pass_word, True, start_date, end_date)
-else:
-    scraper = AmazonScraper(email, pass_word, False, start_date, end_date)
-
 scraper.open_browser()
 
 print('Navigating to invoices...')

@@ -160,10 +160,10 @@ class AmazonScraper:
             invoice_file.write(self.driver.page_source.encode("UTF-8"))
 
     def is_date_within_dates(self, order_date):
-        if order_date < self.start_date and (self.end_date == None or order_date > self.end_date):
+        if order_date <= self.start_date and (self.end_date == None or order_date >= self.end_date):
             self.scrape_started = True
             return True
-        elif self.end_date != None and order_date < self.end_date:
+        elif self.end_date != None and order_date <= self.end_date:
             self.scrape_finished = True
             return False
 

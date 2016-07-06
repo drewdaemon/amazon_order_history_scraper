@@ -46,14 +46,14 @@ def get_dates():
 
 try:
     tree = ElementTree.parse('users.xml')
-    nodes = tree.getroot()
+    root = tree.getroot()
     users = []
-    for node in nodes:
+    for user in root.findall('user'):
         users.append(
             {
-                'username': node[0].text,
-                'password': node[1].text,
-                'business': True if node[2].text == 'true' else False
+                'username': user.find('username').text,
+                'password': user.find('password').text,
+                'business': True if user.find('business').text == 'true' else False
             }
         )
 

@@ -33,6 +33,8 @@ class AmazonLocators:
     DISABLED_NEXT = (By.XPATH, '//*[@id="ordersContainer"]/div[8]/div/ul/li[@class="a-disabled a-last"]')
     NAV_BTNS = (By.XPATH, '//*[@id="ordersContainer"]/div[12]/div/ul//li/a')
     YEAR_PICKER = (By.XPATH, '//*[@id="timePeriodForm"]')
+    BIZ_ORDERS_PICKER = (By.ID, 'a-autoid-1')
+    ALL_ORDERS_LINK = (By.PARTIAL_LINK_TEXT, 'View All Orders:')
     YEAR_FIELDS = (By.XPATH, '//*[@id="a-popover-1"]/div/div/ul//li/a')
     ORDERS_BTN = (By.XPATH, '//*[@id="your-orders-button-announce"]')
     ACCOUNT_BTN = (By.XPATH, '//*[@id="nav-link-yourAccount"]')

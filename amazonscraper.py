@@ -294,6 +294,11 @@ class AmazonScraper:
 
 
     def scrape(self):
+        if self.business:
+            picker = self.wait.until(EC.presence_of_element_located(AL.BIZ_ORDERS_PICKER))
+            picker.click()
+            link = self.wait.until(EC.presence_of_element_located(AL.ALL_ORDERS_LINK))
+            link.click()
         while not self.scrape_finished and self.year_exists(self.current_year):
             self.go_to_year(self.current_year)
             self.try_scrape_all_invoices(False)

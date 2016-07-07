@@ -1,0 +1,11 @@
+<!--
+Example entry (<business> refers to whether it's a business or personal type account).
+<spec>
+    <username>emailaddress@example.com</username>
+    <password>*********</password>
+    <business>false/true</business>
+    <start>YYYY.MM.DD</start>
+    <end>YYYY.MM.DD</end>
+<spec/>
+-->
+<!-- PUT YOUR SPEC BELOW THIS LINE -->
